@@ -1,0 +1,27 @@
+import { GameManager } from './game/managers/GameManager';
+import { AudioManager } from './game/managers/AudioManager';
+import { ScoreManager } from './game/managers/ScoreManager';
+import { MainMenu } from './game/scenes/MainMenu';
+import { TrainingScene } from './game/scenes/TrainingScene';
+import { LeaderboardScene } from './game/scenes/LeaderboardScene';
+
+const gameManager = new GameManager();
+const audioManager = new AudioManager();
+const scoreManager = new ScoreManager();
+
+function init() {
+    gameManager.initialize();
+    audioManager.initialize();
+    scoreManager.initialize();
+    gameManager.loadScene(MainMenu);
+}
+
+function gameLoop() {
+    requestAnimationFrame(gameLoop);
+    gameManager.update();
+}
+
+window.onload = () => {
+    init();
+    gameLoop();
+};

@@ -1,0 +1,545 @@
+import Phaser, { Scene } from 'phaser';
+import { ScoreManager } from '../managers/ScoreManager';
+import { AudioManager } from '../managers/AudioManager';
+import { GameMode } from './GameModeSelectionScene';
+
+export class TrainingScene extends Scene {
+    private scoreManager: ScoreManager;
+    private audioManager: AudioManager;
+    private gameMode: GameMode | null = null;
+
+    // FPS Elements
+    private gun: Phaser.GameObjects.Graphics | null = null;
+    private crosshair: Phaser.GameObjects.Graphics | null = null;
+    private muzzleFlash: Phaser.GameObjects.Graphics | null = null;
+
+    // Game state
+    private targets: Phaser.GameObjects.Graphics[] = [];
+    private score: number = 0;
+    private hits: number = 0;
+    private shots: number = 0;
+    private timeRemaining: number = 60;
+    private gameActive: boolean = false;
+
+    // UI Text
+    private scoreText: Phaser.GameObjects.Text | null = null;
+    private accuracyText: Phaser.GameObjects.Text | null = null;
+    private timerText: Phaser.GameObjects.Text | null = null;
+    private gameModeText: Phaser.GameObjects.Text | null = null;
+
+    constructor() {
+        super({ key: 'TrainingScene' });
+        this.scoreManager = new ScoreManager();
+        this.audioManager = new AudioManager();
+    }
+
+    init(data: { gameMode: GameMode }) {
+        this.gameMode = data.gameMode;
+        this.score = 0;
+        this.hits = 0;
+        this.shots = 0;
+        this.timeRemaining = 60;
+        this.targets = [];
+    }
+
+    preload() {
+        // Assets will be loaded here (for now using graphics)
+    }
+
+    create() {
+        const { width, height } = this.cameras.main;
+
+        // Background
+        this.createBackground();
+
+        // Create FPS gun at bottom
+        this.createGun();
+
+        // Create crosshair
+        this.createCrosshair();
+
+        // Create HUD
+        this.createHUD();
+
+        // Start game
+        this.startGame();
+
+        // Input handling
+        this.input.on('pointerdown', this.shoot, this);
+
+        // ESC to return to menu
+        this.input.keyboard?.on('keydown-ESC', () => {
+            this.endGame();
+        });
+    }
+
+    private createBackground() {
+        const { width, height } = this.cameras.main;
+
+        // Sky gradient
+        const sky = this.add.graphics();
+        sky.fillGradientStyle(0x2a3d66, 0x2a3d66, 0x1a2332, 0x1a2332, 1);
+        sky.fillRect(0, 0, width, height * 0.5);
+
+        // Ground
+        const ground = this.add.graphics();
+        ground.fillStyle(0x1a2332, 1);
+        ground.fillRect(0, height * 0.5, width, height * 0.5);
+
+        // Grid lines for depth perception
+        this.createGridLines();
+    }
+
+    private createGridLines() {
+        const { width, height } = this.cameras.main;
+        const graphics = this.add.graphics();
+        graphics.lineStyle(1, 0x00ff88, 0.1);
+
+        // Vertical lines
+        for (let x = 0; x <= width; x += 80) {
+            graphics.lineBetween(x, height * 0.5, x, height);
+        }
+
+        // Horizontal lines
+        for (let y = height * 0.5; y <= height; y += 60) {
+            graphics.lineBetween(0, y, width, y);
+        }
+    }
+
+    private createGun() {
+        const { width, height } = this.cameras.main;
+
+        // Gun body (simplified Valorant-style)
+        const gun = this.add.graphics();
+
+        // Main body
+        gun.fillStyle(0x2a2a3e, 1);
+        gun.fillRect(width - 450, height - 220, 400, 80);
+
+        // Barrel
+        gun.fillStyle(0x1a1a2e, 1);
+        gun.fillRect(width - 80, height - 200, 60, 30);
+
+        // Grip
+        gun.fillStyle(0x3a3a4e, 1);
+        gun.fillRect(width - 280, height - 180, 60, 100);
+
+        // Magazine
+        gun.fillStyle(0x00ff88, 0.8);
+        gun.fillRect(width - 260, height - 140, 30, 60);
+
+        // Accent lines
+        gun.lineStyle(2, 0x00ff88, 1);
+        gun.lineBetween(width - 420, height - 200, width - 100, height - 200);
+        gun.lineBetween(width - 420, height - 160, width - 100, height - 160);
+
+        this.gun = gun;
+    }
+
+    private createCrosshair() {
+        const { width, height } = this.cameras.main;
+
+        const crosshair = this.add.graphics();
+        crosshair.lineStyle(2, 0x00ff88, 1);
+
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const size = 10;
+        const gap = 5;
+
+        // Top
+        crosshair.lineBetween(centerX, centerY - gap - size, centerX, centerY - gap);
+        // Bottom
+        crosshair.lineBetween(centerX, centerY + gap, centerX, centerY + gap + size);
+        // Left
+        crosshair.lineBetween(centerX - gap - size, centerY, centerX - gap, centerY);
+        // Right
+        crosshair.lineBetween(centerX + gap, centerY, centerX + gap + size, centerY);
+
+        // Center dot
+        crosshair.fillStyle(0x00ff88, 1);
+        crosshair.fillCircle(centerX, centerY, 2);
+
+        this.crosshair = crosshair;
+    }
+
+    private createHUD() {
+        const { width, height } = this.cameras.main;
+
+        // Game mode display
+        this.gameModeText = this.add.text(20, 20, `MODE: ${this.gameMode?.name || 'Training'}`, {
+            fontSize: '18px',
+            color: '#00ff88',
+            fontStyle: 'bold',
+            backgroundColor: '#1a1a2e',
+            padding: { x: 10, y: 5 }
+        });
+
+        // Score
+        this.scoreText = this.add.text(20, 60, 'SCORE: 0', {
+            fontSize: '24px',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        });
+
+        // Accuracy
+        this.accuracyText = this.add.text(20, 90, 'ACCURACY: 0%', {
+            fontSize: '18px',
+            color: '#00ff88'
+        });
+
+        // Timer
+        this.timerText = this.add.text(width - 20, 20, 'TIME: 60', {
+            fontSize: '24px',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(1, 0);
+
+        // Instructions
+        this.add.text(width / 2, 20, 'Click to Shoot | ESC to Exit', {
+            fontSize: '16px',
+            color: '#888888'
+        }).setOrigin(0.5, 0);
+    }
+
+    private startGame() {
+        this.gameActive = true;
+
+        // Spawn targets based on game mode
+        this.spawnTargets();
+
+        // Start timer
+        this.time.addEvent({
+            delay: 1000,
+            callback: this.updateTimer,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Spawn targets periodically
+        this.time.addEvent({
+            delay: this.getSpawnDelay(),
+            callback: this.spawnTargets,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    private getSpawnDelay(): number {
+        // Adjust spawn rate based on game mode difficulty
+        switch (this.gameMode?.difficulty) {
+            case 'Easy': return 1500;
+            case 'Medium': return 1000;
+            case 'Hard': return 700;
+            default: return 1000;
+        }
+    }
+
+    private spawnTargets() {
+        if (!this.gameActive) return;
+
+        const { width, height } = this.cameras.main;
+        const numTargets = Phaser.Math.Between(1, 3);
+
+        for (let i = 0; i < numTargets; i++) {
+            const x = Phaser.Math.Between(100, width - 100);
+            const y = Phaser.Math.Between(100, height - 300);
+
+            this.createTarget(x, y);
+        }
+    }
+
+    private createTarget(x: number, y: number) {
+        const target = this.add.graphics();
+
+        // Different target styles based on game mode
+        if (this.gameMode?.id === 'apex' || this.gameMode?.id === 'cod') {
+            // Fast moving targets
+            this.createMovingTarget(target, x, y);
+        } else {
+            // Static or slow targets
+            this.createStaticTarget(target, x, y);
+        }
+
+        target.setInteractive(new Phaser.Geom.Circle(0, 0, 30), (hitArea: any, x: any, y: any) => { return Phaser.Geom.Circle.Contains(hitArea, x, y); });
+        target.setData('points', 10);
+
+        this.targets.push(target);
+
+        // Auto-destroy after time
+        this.time.delayedCall(3000, () => {
+            if (target.active) {
+                target.destroy();
+                const index = this.targets.indexOf(target);
+                if (index > -1) this.targets.splice(index, 1);
+            }
+        });
+    }
+
+    private createStaticTarget(target: Phaser.GameObjects.Graphics, x: number, y: number) {
+        target.x = x;
+        target.y = y;
+
+        // Outer circle
+        target.fillStyle(0xff6b6b, 1);
+        target.fillCircle(0, 0, 30);
+
+        // Middle circle
+        target.fillStyle(0xffffff, 1);
+        target.fillCircle(0, 0, 20);
+
+        // Center circle
+        target.fillStyle(0xff6b6b, 1);
+        target.fillCircle(0, 0, 10);
+
+        // Pulse animation
+        this.tweens.add({
+            targets: target,
+            scale: { from: 1, to: 1.1 },
+            duration: 500,
+            yoyo: true,
+            repeat: -1
+        });
+    }
+
+    private createMovingTarget(target: Phaser.GameObjects.Graphics, x: number, y: number) {
+        target.x = x;
+        target.y = y;
+
+        // Different shape for moving targets
+        target.fillStyle(0x4ecdc4, 1);
+        target.fillCircle(0, 0, 25);
+        target.fillStyle(0x000000, 1);
+        target.fillCircle(0, 0, 15);
+
+        // Movement
+        const { width, height } = this.cameras.main;
+        const endX = Phaser.Math.Between(50, width - 50);
+        const endY = Phaser.Math.Between(50, height - 250);
+
+        this.tweens.add({
+            targets: target,
+            x: endX,
+            y: endY,
+            duration: 2000,
+            ease: 'Linear'
+        });
+    }
+
+    private shoot(pointer: Phaser.Input.Pointer) {
+        if (!this.gameActive) return;
+
+        this.shots++;
+
+        // Muzzle flash
+        this.showMuzzleFlash();
+
+        // Gun recoil animation
+        if (this.gun) {
+            this.tweens.add({
+                targets: this.gun,
+                y: '-=10',
+                duration: 50,
+                yoyo: true
+            });
+        }
+
+        // Check if hit any target
+        let hit = false;
+        for (const target of this.targets) {
+            if (target.active) {
+                const bounds = target.getBounds();
+                if (bounds.contains(pointer.x, pointer.y)) {
+                    this.hitTarget(target);
+                    hit = true;
+                    break;
+                }
+            }
+        }
+
+        if (!hit) {
+            // Miss effect
+            this.cameras.main.shake(50, 0.002);
+        }
+
+        this.updateHUD();
+    }
+
+    private hitTarget(target: Phaser.GameObjects.Graphics) {
+        this.hits++;
+        this.score += target.getData('points');
+
+        // Hit effect
+        this.cameras.main.flash(100, 0, 255, 136, false, 0.2);
+
+        // Destroy target with animation
+        this.tweens.add({
+            targets: target,
+            alpha: 0,
+            scale: 0,
+            duration: 200,
+            onComplete: () => {
+                const index = this.targets.indexOf(target);
+                if (index > -1) this.targets.splice(index, 1);
+                target.destroy();
+            }
+        });
+    }
+
+    private showMuzzleFlash() {
+        const { width, height } = this.cameras.main;
+
+        if (this.muzzleFlash) {
+            this.muzzleFlash.destroy();
+        }
+
+        this.muzzleFlash = this.add.graphics();
+        this.muzzleFlash.fillStyle(0xffff00, 0.8);
+        this.muzzleFlash.fillCircle(width - 20, height - 185, 15);
+
+        this.time.delayedCall(50, () => {
+            if (this.muzzleFlash) {
+                this.muzzleFlash.destroy();
+            }
+        });
+    }
+
+    private updateTimer() {
+        if (!this.gameActive) return;
+
+        this.timeRemaining--;
+
+        if (this.timerText) {
+            this.timerText.setText(`TIME: ${this.timeRemaining}`);
+
+            if (this.timeRemaining <= 10) {
+                this.timerText.setColor('#ff6b6b');
+            }
+        }
+
+        if (this.timeRemaining <= 0) {
+            this.endGame();
+        }
+    }
+
+    private updateHUD() {
+        if (this.scoreText) {
+            this.scoreText.setText(`SCORE: ${this.score}`);
+        }
+
+        if (this.accuracyText) {
+            const accuracy = this.shots > 0 ? ((this.hits / this.shots) * 100).toFixed(1) : '0';
+            this.accuracyText.setText(`ACCURACY: ${accuracy}%`);
+        }
+    }
+
+    private endGame() {
+        this.gameActive = false;
+
+        // Save stats
+        const accuracy = this.shots > 0 ? ((this.hits / this.shots) * 100) : 0;
+        this.saveGameStats(accuracy);
+
+        // Show results
+        this.showResults(accuracy);
+    }
+
+    private saveGameStats(accuracy: number) {
+        const savedData = localStorage.getItem('aimchain_player_data');
+        let data = savedData ? JSON.parse(savedData) : {
+            totalScore: 0,
+            accuracy: 0,
+            gamesPlayed: 0,
+            tokensEarned: 0,
+            nftCount: 0
+        };
+
+        data.totalScore += this.score;
+        data.accuracy = ((data.accuracy * data.gamesPlayed) + accuracy) / (data.gamesPlayed + 1);
+        data.gamesPlayed += 1;
+        data.tokensEarned += Math.floor(this.score / 10);
+
+        localStorage.setItem('aimchain_player_data', JSON.stringify(data));
+    }
+
+    private showResults(accuracy: number) {
+        const { width, height } = this.cameras.main;
+
+        // Overlay
+        const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.8).setOrigin(0);
+
+        // Results panel
+        const panel = this.add.graphics();
+        panel.fillStyle(0x1a1a2e, 1);
+        panel.fillRoundedRect(width / 2 - 250, height / 2 - 200, 500, 400, 10);
+
+        // Title
+        this.add.text(width / 2, height / 2 - 150, 'TRAINING COMPLETE!', {
+            fontSize: '36px',
+            color: '#00ff88',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Stats
+        const statsY = height / 2 - 80;
+        this.add.text(width / 2, statsY, `Score: ${this.score}`, {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        this.add.text(width / 2, statsY + 40, `Hits: ${this.hits}/${this.shots}`, {
+            fontSize: '20px',
+            color: '#aaaaaa'
+        }).setOrigin(0.5);
+
+        this.add.text(width / 2, statsY + 75, `Accuracy: ${accuracy.toFixed(1)}%`, {
+            fontSize: '20px',
+            color: '#00ff88'
+        }).setOrigin(0.5);
+
+        this.add.text(width / 2, statsY + 110, `Tokens Earned: ${Math.floor(this.score / 10)}`, {
+            fontSize: '20px',
+            color: '#ffd700'
+        }).setOrigin(0.5);
+
+        // Buttons
+        this.createResultButton(width / 2 - 120, height / 2 + 120, 'Play Again', () => {
+            this.scene.restart({ gameMode: this.gameMode });
+        });
+
+        this.createResultButton(width / 2 + 120, height / 2 + 120, 'Main Menu', () => {
+            this.scene.start('MainMenu');
+        });
+    }
+
+    private createResultButton(x: number, y: number, text: string, callback: () => void) {
+        const button = this.add.container(x, y);
+
+        const bg = this.add.rectangle(0, 0, 200, 50, 0x00ff88);
+        bg.setInteractive({ useHandCursor: true });
+        button.add(bg);
+
+        const label = this.add.text(0, 0, text, {
+            fontSize: '18px',
+            color: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        button.add(label);
+
+        bg.on('pointerover', () => {
+            bg.setFillStyle(0x00dd77);
+        });
+
+        bg.on('pointerout', () => {
+            bg.setFillStyle(0x00ff88);
+        });
+
+        bg.on('pointerdown', callback);
+
+        return button;
+    }
+
+    update() {
+        // Game loop updates
+    }
+}

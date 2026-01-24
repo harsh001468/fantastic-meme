@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AimChain - COD Style FPS Aim Trainer</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      background: #000;
+    }
+    #blocker {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    #instructions {
+      width: 500px;
+      background: rgba(20,20,20,0.95);
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 0 30px rgba(255,102,0,0.5);
+      cursor: default;
+    }
+    #instructions h1 {
+      color: #ff6600;
+      margin-top: 0;
+      font-size: 36px;
+      text-shadow: 0 0 10px rgba(255,102,0,0.8);
+    }
+    #instructions p {
+      margin: 15px 0;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    #instructions .important {
+      background: rgba(255,102,0,0.2);
+      padding: 10px;
+      border-radius: 5px;
+      margin: 15px 0;
+      border: 2px solid #ff6600;
+      font-size: 14px;
+    }
+    #instructions button {
+      padding: 15px 40px;
+      font-size: 18px;
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 20px;
+      font-weight: bold;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(255,102,0,0.4);
+    }
+    #instructions button:hover {
+      background: linear-gradient(135deg, #ff9900, #ffaa00);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255,102,0,0.6);
+    }
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      z-index: 999;
+      pointer-events: none;
+    }
+    .crosshair-line {
+      position: absolute;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 0 3px rgba(0,0,0,0.8);
+    }
+    .crosshair-h {
+      width: 20px;
+      height: 2px;
+      left: -10px;
+      top: -1px;
+    }
+    .crosshair-v {
+      width: 2px;
+      height: 20px;
+      left: -1px;
+      top: -10px;
+    }
+    .crosshair-dot {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: white;
+      border-radius: 50%;
+      left: -2px;
+      top: -2px;
+      box-shadow: 0 0 3px rgba(0,0,0,0.8);
+    }
+    #hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 18px;
+      display: none;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      z-index: 50;
+    }
+    #score {
+      font-size: 48px;
+      font-weight: bold;
+      color: #ffdd00;
+      text-shadow: 0 0 10px rgba(255,221,0,0.8), 2px 2px 6px rgba(0,0,0,0.8);
+      margin-bottom: 10px;
+    }
+    #hud-stats {
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #ff6600;
+    }
+    #hud-stats div {
+      margin: 8px 0;
+      font-size: 16px;
+    }
+    .hud-label {
+      color: #aaa;
+      display: inline-block;
+      width: 80px;
+    }
+    .hud-value {
+      color: white;
+      font-weight: bold;
+    }
+    #ammo {
+      color: #00ff00;
+    }
+    #timer {
+      color: #ff6600;
+      font-size: 20px;
+    }
+    .controls-hint {
+      font-size: 14px;
+      color: #888;
+      margin-top: 20px;
+      line-height: 1.8;
+    }
+    .controls-hint strong {
+      color: #ff6600;
+    }
+    #walletButton {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 30px;
+      font-size: 18px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      border: 3px solid #fff;
+      color: white;
+      cursor: pointer;
+      border-radius: 30px;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 0 20px rgba(76,175,80,0.8), 0 4px 15px rgba(0,0,0,0.5);
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(76,175,80,0.8), 0 4px 15px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 30px rgba(76,175,80,1), 0 6px 25px rgba(0,0,0,0.7); }
+    }
+    #walletButton:hover {
+      background: linear-gradient(135deg, #45a049, #4CAF50);
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 0 35px rgba(76,175,80,1), 0 8px 25px rgba(0,0,0,0.7);
+    }
+    #walletInfo {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: rgba(0,255,0,0.15);
+      padding: 12px 20px;
+      border-radius: 15px;
+      color: #00ff00;
+      font-size: 14px;
+      font-weight: bold;
+      display: none;
+      z-index: 10000;
+      border: 2px solid #00ff00;
+      box-shadow: 0 0 15px rgba(0,255,0,0.5);
+      backdrop-filter: blur(10px);
+    }
+    #profileButton {
+      position: fixed;
+      top: 20px;
+      right: 200px;
+      padding: 12px 25px;
+      font-size: 16px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: 2px solid #fff;
+      color: white;
+      cursor: pointer;
+      border-radius: 25px;
+      font-weight: bold;
+      z-index: 10000;
+      box-shadow: 0 4px 15px rgba(102,126,234,0.6);
+      transition: all 0.3s;
+      display: none;
+    }
+    #profileButton:hover {
+      background: linear-gradient(135deg, #764ba2, #667eea);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102,126,234,0.8);
+    }
+    #walletStatusHome {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 101;
+    }
+    #walletStatusHome.connected {
+      background: rgba(0,255,0,0.2);
+      color: #00ff00;
+      border: 2px solid #00ff00;
+      box-shadow: 0 0 20px rgba(0,255,0,0.4);
+    }
+    #walletStatusHome.disconnected {
+      background: rgba(255,0,0,0.2);
+      color: #ff4444;
+      border: 2px solid #ff4444;
+      box-shadow: 0 0 20px rgba(255,0,0,0.4);
+    }
+    #profileModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20000;
+    }
+    #profileContent {
+      background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98));
+      padding: 40px;
+      border-radius: 20px;
+      max-width: 600px;
+      width: 90%;
+      color: white;
+      box-shadow: 0 0 50px rgba(255,102,0,0.6);
+      border: 3px solid #ff6600;
+      position: relative;
+    }
+    #profileContent h2 {
+      color: #ff6600;
+      margin-top: 0;
+      font-size: 32px;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(255,102,0,0.8);
+      margin-bottom: 30px;
+    }
+    .profile-section {
+      background: rgba(0,0,0,0.3);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border-left: 4px solid #ff6600;
+    }
+    .profile-label {
+      color: #aaa;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .profile-value {
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+    .profile-address {
+      background: rgba(0,255,0,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 16px;
+      border: 2px solid #00ff00;
+      margin-top: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .profile-address:hover {
+      background: rgba(0,255,0,0.2);
+      box-shadow: 0 0 15px rgba(0,255,0,0.4);
+    }
+    #closeProfile {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #ff4444;
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    #closeProfile:hover {
+      background: #ff0000;
+      transform: rotate(90deg);
+    }
+    .copy-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Wallet Connection Button -->
+  <button id="walletButton">🔗 Connect Wallet</button>
+  <div id="walletInfo">Not Connected</div>
+  
+  <!-- Profile Button (shown when connected) -->
+  <button id="profileButton">👤 My Profile</button>
+
+  <!-- Player Profile Modal -->
+  <div id="profileModal">
+    <div id="profileContent">
+      <button id="closeProfile">×</button>
+      <h2>👤 Player Profile</h2>
+      
+      <div class="profile-section">
+        <div class="profile-label">Wallet Address</div>
+        <div class="profile-address" id="profileAddress" title="Click to copy">
+          Not Connected
+        </div>
+        <div class="copy-hint">📋 Click address to copy</div>
+      </div>
+      
+      <div class="profile-section">
+        <div class="profile-label">Network</div>
+        <div class="profile-value" id="profileNetwork">Not Connected</div>
+      </div>
+      
+      <div class="profile-section">
+        <div class="profile-label">Session Stats</div>
+        <div class="profile-value">
+          <div style="margin: 8px 0;">🎯 Score: <span id="profileScore">0</span></div>
+          <div style="margin: 8px 0;">🎲 Accuracy: <span id="profileAccuracy">0%</span></div>
+          <div style="margin: 8px 0;">💥 Hits: <span id="profileHits">0</span></div>
+          <div style="margin: 8px 0;">🔫 Shots: <span id="profileShots">0</span></div>
+        </div>
+      </div>
+      
+      <div class="profile-section">
+        <div class="profile-label">Status</div>
+        <div class="profile-value" id="profileStatus">
+          ✅ Connected to Monad Testnet
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pointer Lock Blocker -->
+  <div id="blocker">
+    <div id="instructions">
+      <h1>⚡ AIMCHAIN ⚡</h1>
+      <p style="font-size: 20px; color: #ff9900;">Call of Duty - FPS Aim Trainer</p>
+      
+      <!-- Wallet Status on Home Page -->
+      <div id="walletStatusHome" class="disconnected">
+        ❌ Wallet Not Connected
+      </div>
+      <div class="important">
+        ⚠️ <strong>IMPORTANT:</strong> After clicking START, move your mouse to look around!<br>
+        Your cursor will be locked for immersive FPS controls.
+      </div>
+      <p>Click the button below to lock your mouse and start training</p>
+      <div class="controls-hint">
+        <strong>LOOK AROUND:</strong> Move Mouse<br>
+        <strong>MOVE:</strong> W A S D<br>
+        <strong>SHOOT:</strong> Left Click<br>
+        <strong>RELOAD:</strong> R Key<br>
+        <strong>PAUSE:</strong> ESC<br>
+        <strong>TOGGLE LOCK:</strong> CTRL
+      </div>
+      <button id="playButton">🎯 START TRAINING</button>
+    </div>
+  </div>
+
+  <!-- Crosshair (shown when pointer locked) -->
+  <div id="crosshair">
+    <div class="crosshair-line crosshair-h"></div>
+    <div class="crosshair-line crosshair-v"></div>
+    <div class="crosshair-dot"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score">Score: 0</div>
+    <div id="hud-stats">
+      <div><span class="hud-label">Accuracy:</span> <span class="hud-value" id="accuracy">0%</span></div>
+      <div><span class="hud-label">Ammo:</span> <span class="hud-value" id="ammo">30/90</span></div>
+      <div><span class="hud-label">Time:</span> <span class="hud-value" id="timer">60s</span></div>
+      <div><span class="hud-label">Hits:</span> <span class="hud-value" id="hits">0</span></div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="/game.js"></script>
+</body>
+</html>
