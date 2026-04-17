@@ -1,38 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hunterless - FPS Aim Training on Monad</title>
-  <link rel="stylesheet" href="/src/ui/styles/main.css">
+  <title>Portfolio Website</title>
   <style>
+    :root {
+      color-scheme: light;
+    }
+
     * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
     }
 
     body {
-      overflow: hidden;
-      background: #000;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f7f9fc;
+      color: #1f2937;
+      line-height: 1.6;
     }
 
-    #game-container {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    header {
+      background: #111827;
+      color: #fff;
+      padding: 56px 20px;
+      text-align: center;
+    }
+
+    header p {
+      color: #d1d5db;
+      margin-top: 8px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+      display: grid;
+      gap: 24px;
+    }
+
+    section {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      color: #111827;
+    }
+
+    ul {
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #6b7280;
     }
   </style>
 </head>
-
 <body>
-  <div id="game-container"></div>
-  <div id="ui-root"></div>
-  <script type="module" src="/src/index.ts"></script>
-</body>
+  <header>
+    <h1>Hi, I'm [Your Name]</h1>
+    <p>Portfolio website focused on projects, skills, and experience.</p>
+  </header>
 
+  <main>
+    <section>
+      <h2>About Me</h2>
+      <p>I build clean, user-friendly web experiences and enjoy turning ideas into practical products.</p>
+    </section>
+
+    <section>
+      <h2>Projects</h2>
+      <ul>
+        <li><strong>Project One:</strong> Responsive website for a local business.</li>
+        <li><strong>Project Two:</strong> Dashboard app for tracking productivity.</li>
+        <li><strong>Project Three:</strong> Portfolio redesign with modern UI patterns.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Skills</h2>
+      <p>HTML, CSS, JavaScript, TypeScript, React, and UI/UX fundamentals.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>Email: [your.email@example.com]</p>
+    </section>
+  </main>
+
+  <footer>© 2026 [Your Name]. All rights reserved.</footer>
+</body>
 </html>
